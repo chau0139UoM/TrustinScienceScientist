@@ -36,6 +36,8 @@ library(semPlot)
 library(haven)
 library(semTools)
 library(readxl)
+library(dplyr)
+library(tidyr)
 ```
 
 ## 2.2. Import the dataset
@@ -69,28 +71,13 @@ Data_Trust[, reverse_cols] <-
 The unidimensional model specifies a single latent factor, `TrustinScienceScientist`, measured by all 21 observed items.
 
 ```{r cfa-unidimensional}
-Model_Uni <- '
-  TrustinScienceScientist =~
-    ts1 + ts2 + ts3 + ts4 + ts5 + ts6 + ts7 +
-    ts8 + ts9 + ts10 + ts11 + ts12 + ts13 +
-    ts14 + ts15 + ts16 + ts17 + ts18 + ts19 +
-    ts20 + ts21
-'
-
-FitUni <- cfa(
-  Model_Uni,
-  data = Data_Trust,
-  std.lv = TRUE
-)
-
-summary(
-  FitUni,
-  fit.measures = TRUE,
-  standardized = TRUE
-)
-
-# Modification indices
+Model_Uni<-'TrustinScienceScientist =~ ts1 + ts2 + ts3 + ts4 + ts5 + ts6 + ts7
+                                     + ts8 + ts9 + ts10 + ts11 + ts12 + ts13
+                                     +ts14 + ts15 + ts16 + ts17 + ts18 +ts19 + ts20 + ts21'
+FitUni <- cfa(Model_Uni, data = Data_Trust, std.lv = TRUE)
+summary(FitUni,fit.measures=TRUE,standardized=TRUE)
 modindices(FitUni)
+
 ```
 
 ## 3.2. Simple-structure two-factor CFA model
@@ -101,28 +88,10 @@ The two-factor model distinguishes between trust in science and trust in scienti
 - `TrustinScientist` is measured by 16 items.
 
 ```{r cfa-simple-structure}
-Model_Simple <- '
-  TrustinScience =~
-    ts3 + ts12 + ts14 + ts15 + ts21
-
-  TrustinScientist =~
-    ts1 + ts2 + ts4 + ts5 + ts6 + ts7 + ts8 +
-    ts9 + ts10 + ts11 + ts13 + ts16 + ts17 +
-    ts18 + ts19 + ts20
-'
-
-FitSimple <- cfa(
-  Model_Simple,
-  data = Data_Trust
-)
-
-summary(
-  FitSimple,
-  fit.measures = TRUE,
-  standardized = TRUE
-)
-
-# Modification indices
+Model_Simple<-'TrustinScience =~ ts3 + ts12 + ts14 + ts15 + ts21
+            TrustinScientist =~ ts1 + ts2 + ts4 + ts5 + ts6 + ts7 + ts8 + ts9 + ts10 + ts11 + ts13 + ts16 + ts17 + ts18 + ts19 + ts20 '
+FitSimple <- cfa(Model_Simple, data = Data_Trust)
+summary(FitSimple,fit.measures=TRUE,standardized=TRUE)
 modindices(FitSimple)
 ```
 
@@ -132,30 +101,11 @@ The second-order model specifies a general trust factor, `TrustGeneral`, underly
 
 ```{r cfa-second-order}
 Model_SecondOrder <- '
-  TrustinScience =~
-    ts3 + ts12 + ts14 + ts15 + ts21
-
-  TrustinScientist =~
-    ts1 + ts2 + ts4 + ts5 + ts6 + ts7 + ts8 +
-    ts9 + ts10 + ts11 + ts13 + ts16 + ts17 +
-    ts18 + ts19 + ts20
-
-  TrustGeneral =~
-    TrustinScience + TrustinScientist
-'
-
-Fit_SecondOrder <- cfa(
-  Model_SecondOrder,
-  data = Data_Trust
-)
-
-summary(
-  Fit_SecondOrder,
-  fit.measures = TRUE,
-  standardized = TRUE
-)
-
-# Modification indices
+  TrustinScience =~ ts3 + ts12 + ts14 + ts15 + ts21 
+  TrustinScientist =~ ts1 + ts2 + ts4 + ts5 + ts6 + ts7 + ts8 + ts9 + ts10 + ts11 + ts13 + ts16 + ts17 + ts18 + ts19 + ts20 
+  TrustGeneral =~ TrustinScience + TrustinScientist'
+Fit_SecondOrder<- cfa(Model_SecondOrder, data = Data_Trust)
+summary(Fit_SecondOrder,fit.measures=TRUE,standardized=TRUE)
 modindices(Fit_SecondOrder)
 ```
 
@@ -164,39 +114,21 @@ modindices(Fit_SecondOrder)
 The unconstrained second-order model may encounter identification problems or negative latent residual variances. The following version fixes the variance of the higher-order factor to 1 and fixes both first-order latent residual variances to 0.05.
 
 ```{r cfa-second-order-constrained}
-Model_SecondOrder_Constrained <- '
-  TrustinScience =~
-    ts3 + ts12 + ts14 + ts15 + ts21
-
-  TrustinScientist =~
-    ts1 + ts2 + ts4 + ts5 + ts6 + ts7 + ts8 +
-    ts9 + ts10 + ts11 + ts13 + ts16 + ts17 +
-    ts18 + ts19 + ts20
-
-  TrustGeneral =~
-    TrustinScience + TrustinScientist
-
-  # Fix the variance of the higher-order factor
-  TrustGeneral ~~ 1*TrustGeneral
-
-  # Fix first-order latent residual variances
-  TrustinScience ~~ 0.05*TrustinScience
-  TrustinScientist ~~ 0.05*TrustinScientist
+Model_SecondOrder <- '
+  TrustinScience =~ ts3 + ts12 + ts14 + ts15 + ts21 
+  TrustinScientist =~ ts1 + ts2 + ts4 + ts5 + ts6 + ts7 + ts8 + ts9 + ts10 + ts11 + ts13 + ts16 + ts17 + ts18 + ts19 + ts20 
+  TrustGeneral =~ TrustinScience + TrustinScientist
+  
+  #Fixed variance of higher-order factor
+  TrustGeneral~~1*TrustGeneral
+  
+  #Ensured positiive residual variances
+  TrustinScience~~ 0.05*TrustinScience
+  TrustinScientist~~ 0.05*TrustinScientist
 '
-
-Fit_SecondOrder_Constrained <- cfa(
-  Model_SecondOrder_Constrained,
-  data = Data_Trust
-)
-
-summary(
-  Fit_SecondOrder_Constrained,
-  fit.measures = TRUE,
-  standardized = TRUE
-)
-
-# Modification indices
-modindices(Fit_SecondOrder_Constrained)
+Fit_SecondOrder<- cfa(Model_SecondOrder, data = Data_Trust)
+summary(Fit_SecondOrder,fit.measures=TRUE,standardized=TRUE)
+modindices(Fit_SecondOrder)
 ```
 
 ## 3.4. Bifactor CFA model
@@ -206,45 +138,50 @@ The bifactor model specifies a general trust factor loading on all 21 items and 
 The general factor and the two specific factors are constrained to be mutually orthogonal.
 
 ```{r cfa-bifactor}
-Model_Bi <- '
-  # General factor
-  TrustinScienceScientist =~
-    ts1 + ts2 + ts3 + ts4 + ts5 + ts6 + ts7 +
-    ts8 + ts9 + ts10 + ts11 + ts12 + ts13 +
-    ts14 + ts15 + ts16 + ts17 + ts18 + ts19 +
-    ts20 + ts21
-
-  # Specific factor: trust in science
-  TrustinScience =~
-    ts3 + ts12 + ts14 + ts15 + ts21
-
-  # Specific factor: trust in scientists
-  TrustinScientist =~
-    ts1 + ts2 + ts4 + ts5 + ts6 + ts7 + ts8 +
-    ts9 + ts10 + ts11 + ts13 + ts16 + ts17 +
-    ts18 + ts19 + ts20
-
-  # Orthogonality constraints
-  TrustinScienceScientist ~~ 0*TrustinScience
-  TrustinScienceScientist ~~ 0*TrustinScientist
-  TrustinScience ~~ 0*TrustinScientist
-'
-
-FitBi <- cfa(
-  Model_Bi,
-  data = Data_Trust
-)
-
-summary(
-  FitBi,
-  fit.measures = TRUE,
-  standardized = TRUE
-)
-
-# Modification indices
+Model_Bi<-'TrustinScienceScientist =~ ts1 + ts2 + ts3 + ts4 + ts5 + ts6 + ts7 + ts8 + ts9 + ts10 + ts11 + ts12 + ts13 + ts14 + ts15 + ts16 + ts17 + ts18 + ts19 + ts20 + ts21
+           TrustinScience =~ ts3 + ts12 + ts14 + ts15 + ts21
+           TrustinScientist =~ ts1 + ts2 + ts4 + ts5 + ts6 + ts7 + ts8 + ts9 + ts10 + ts11 + ts13 + ts16 + ts17 + ts18 + ts19 + ts20
+           TrustinScienceScientist ~~ 0*TrustinScience
+           TrustinScienceScientist ~~ 0*TrustinScientist
+           TrustinScience ~~ 0*TrustinScientist'
+FitBi <- cfa(Model_Bi, data = Data_Trust)
+summary(FitBi,fit.measures=TRUE,standardized=TRUE)
 modindices(FitBi)
 ```
 
+## 3.5. Factor loadings for four CFA models
+```{r}
+extract_loadings <- function(fit, model_name) {
+
+  standardizedSolution(fit, ci = TRUE) %>%
+    filter(op == "=~") %>%
+    transmute(
+      Model = model_name,
+      Factor = lhs,
+      Item = rhs,
+      Std_Loading = est.std,
+      SE = se,
+      CI_Lower = ci.lower,
+      CI_Upper = ci.upper,
+      p_value = pvalue
+    )
+}
+
+All_Loadings <- bind_rows(
+  extract_loadings(FitUni, "Unidimensional"),
+  extract_loadings(FitSimple, "Simple structure"),
+  extract_loadings(Fit_SecondOrder, "Second-order"),
+  extract_loadings(FitBi, "Bifactor")
+)
+
+print(All_Loadings, n = Inf)
+
+write.csv(
+  All_Loadings,
+  "All_CFA_Standardized_Loadings.csv",
+  row.names = FALSE
+)
+```
 # 4. Structural equation modeling
 
 ## 4.1. Bifactor SEM predicting belief in information
@@ -252,37 +189,13 @@ modindices(FitBi)
 This model examines whether the general trust factor and the two specific trust factors predict `Outcome_beliefinfo`.
 
 ```{r sem-bifactor-belief-information}
-Model_Bi1 <- '
-  # General factor
-  TrustinScienceScientist =~ ts1 + ts2 + ts3 + ts4 + ts5 + ts6 + ts7 +
-    ts8 + ts9 + ts10 + ts11 + ts12 + ts13 + ts14 + ts15 + ts16 +
-    ts17 + ts18 + ts19 + ts20 + ts21
-
-  # Specific factors
-  TrustinScience =~ ts3 + ts12 + ts14 + ts15 + ts21
-  TrustinScientist =~ ts1 + ts2 + ts4 + ts5 + ts6 + ts7 + ts8 +
-    ts9 + ts10 + ts11 + ts13 + ts16 + ts17 + ts18 + ts19 + ts20
-
-  # Orthogonal bifactor structure
-  TrustinScienceScientist ~~ 0*TrustinScience
-  TrustinScienceScientist ~~ 0*TrustinScientist
-  TrustinScience ~~ 0*TrustinScientist
-
-  # Structural path to outcome
-  Outcome_beliefinfo ~ TrustinScience + TrustinScientist + TrustinScienceScientist
-'
-
-SEMBi1 <- sem(
-  Model_Bi1,
-  data = Data_Trust,
-  std.lv = TRUE
-)
-
-summary(
-  SEMBi1,
-  fit.measures = TRUE,
-  standardized = TRUE
-)
+Model_Bi1<-'TrustinScienceScientist =~ ts1 + ts2 + ts3 + ts4 + ts5 + ts6 + ts7 + ts8 + ts9 + ts10 + ts11 + ts12 + ts13 + ts14 + ts15 + ts16 + ts17 + ts18 + ts19 + ts20 + ts21
+           TrustinScience =~ ts3 + ts12 + ts14 + ts15 + ts21
+           TrustinScientist =~ ts1 + ts2 + ts4 + ts5 + ts6 + ts7 + ts8 + ts9 + ts10 + ts11 + ts13 + ts16 + ts17 + ts18 + ts19 + ts20
+            TrustinScienceScientist ~ 0*TrustinScience + 0*TrustinScientist
+            Outcome_beliefinfo ~ TrustinScience + TrustinScientist + TrustinScienceScientist'
+SEMBi1 <- sem(Model_Bi1, data = Data_Trust, std.lv = TRUE)
+summary(SEMBi1,fit.measures=TRUE,standardized=TRUE)
 ```
 
 ## 4.2. Bifactor SEM predicting trust in individual scientists
@@ -290,87 +203,11 @@ summary(
 This model examines whether the general trust factor and the two specific trust factors predict `Outcome_highcred`.
 
 ```{r sem-bifactor-individual-scientists}
-Model_Bi2 <- '
-  # General factor
-  TrustinScienceScientist =~ ts1 + ts2 + ts3 + ts4 + ts5 + ts6 + ts7 +
-    ts8 + ts9 + ts10 + ts11 + ts12 + ts13 + ts14 + ts15 + ts16 +
-    ts17 + ts18 + ts19 + ts20 + ts21
-
-  # Specific factors
-  TrustinScience =~ ts3 + ts12 + ts14 + ts15 + ts21
-  TrustinScientist =~ ts1 + ts2 + ts4 + ts5 + ts6 + ts7 + ts8 +
-    ts9 + ts10 + ts11 + ts13 + ts16 + ts17 + ts18 + ts19 + ts20
-
-  # Orthogonal bifactor structure
-  TrustinScienceScientist ~~ 0*TrustinScience
-  TrustinScienceScientist ~~ 0*TrustinScientist
-  TrustinScience ~~ 0*TrustinScientist
-
-  # Structural path to outcome
-  Outcome_highcred ~ TrustinScience + TrustinScientist + TrustinScienceScientist
-'
-
-SEMBi2 <- sem(
-  Model_Bi2,
-  data = Data_Trust,
-  std.lv = TRUE
-)
-
-summary(
-  SEMBi2,
-  fit.measures = TRUE,
-  standardized = TRUE
-)
+Model_Bi2<-'TrustinScienceScientist =~ ts1 + ts2 + ts3 + ts4 + ts5 + ts6 + ts7 + ts8 + ts9 + ts10 + ts11 + ts12 + ts13 + ts14 + ts15 + ts16 + ts17 + ts18 + ts19 + ts20 + ts21
+           TrustinScience =~ ts3 + ts12 + ts14 + ts15 + ts21
+           TrustinScientist =~ ts1 + ts2 + ts4 + ts5 + ts6 + ts7 + ts8 + ts9 + ts10 + ts11 + ts13 + ts16 + ts17 + ts18 + ts19 + ts20
+            TrustinScienceScientist ~ 0*TrustinScience + 0*TrustinScientist
+           Outcome_highcred ~ TrustinScience + TrustinScientist + TrustinScienceScientist'
+SEMBi2 <- sem(Model_Bi2, data = Data_Trust, std.lv = TRUE)
+summary(SEMBi2,fit.measures=TRUE,standardized=TRUE)
 ```
-
-# 5. Model comparison
-
-The following code extracts commonly reported fit indices from the fitted CFA and SEM models.
-
-```{r model-comparison}
-models <- list(
-  Unidimensional = FitUni,
-  SimpleStructure = FitSimple,
-  SecondOrder = Fit_SecondOrder,
-  SecondOrder_Constrained = Fit_SecondOrder_Constrained,
-  Bifactor = FitBi,
-  SEM_BeliefInformation = SEMBi1,
-  SEM_IndividualScientists = SEMBi2
-)
-
-fit_indices <- do.call(
-  rbind,
-  lapply(names(models), function(model_name) {
-    fit <- fitMeasures(
-      models[[model_name]],
-      c(
-        "chisq", "df", "pvalue",
-        "cfi", "tli", "rmsea", "srmr",
-        "aic", "bic"
-      )
-    )
-
-    data.frame(
-      Model = model_name,
-      t(fit),
-      row.names = NULL,
-      check.names = FALSE
-    )
-  })
-)
-
-rownames(fit_indices) <- NULL
-
-knitr::kable(
-  fit_indices,
-  digits = 3,
-  caption = "Fit indices for the CFA and SEM models"
-)
-```
-
-# 6. Conclusion
-
-This analysis compares alternative representations of trust in science and scientists and examines the predictive relationships between latent trust factors and the two outcomes.
-
-Model selection should consider overall fit, parameter estimates, identification, residual variances, theoretical coherence, and the interpretability of the latent factors rather than relying exclusively on individual fit indices.
-
